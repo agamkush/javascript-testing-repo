@@ -1,0 +1,44 @@
+name: Function App Deployment
+on:
+  push:
+    branches: 
+      - main
+
+jobs:
+  deploy-functions:
+    runs-on: ubuntu-latest
+
+    env:
+      AZURE_FUNCTIONAPP_NAME: zwing-function-app
+      AZURE_FUNCTIONAPP_PACKAGE_PATH: '.' 
+      NODEJS_VERSION: '22'
+    
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Install Azure CLI 
+        run: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+
+      - name: Setup Node.js Environment
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{env.NODEJS_VERSION}}
+
+      - name: "Resolve Project Dependencies Using Npm"
+        shell: bash
+        run: |
+          pushd './${{env.AZURE_FUNCTIONAPP_PACKAGE_PATH}}'
+          npm install
+          npm run build --if-present
+          npm run test --if-present
+          popd
+
+      - name: Run Azure Functions Action
+        uses: Azure/functions-action@v1
+        id: fa
+        with:
+          app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
+          package: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
+          publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
